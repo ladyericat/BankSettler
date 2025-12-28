@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bank Settler</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:16px; }
+h1,h2 { margin: 8px 0; }
+table { border-collapse: collapse; width: 100%; max-width: 1000px; }
+th,td { border:1px solid #ddd; padding:6px 8px; font-size:14px; text-align:center; }
+th { background:#f5f5f5; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+input[type=number]{ width:80px; }
+.card { border:1px solid #ddd; border-radius:8px; padding:12px; }
+.note { font-size:13px; margin-bottom:8px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<h1>Bank Settler</h1>
+
+<div class="grid">
+<div class="card">
+<h2>Original Bank</h2>
+<table>
+<thead><tr><th>Denom</th><th>Count</th><th>Amount</th></tr></thead>
+<tbody id="bank"></tbody>
+<tfoot><tr><th>Total Bank</th><th></th><th id="bankTotal">$0</th></tr></tfoot>
+</table>
+</div>
+
+<div class="card">
+<h2>Final Cash Register</h2>
+<table>
+<thead><tr><th>Denom</th><th>Count</th><th>Amount</th></tr></thead>
+<tbody id="final"></tbody>
+<tfoot><tr><th>Total Cash</th><th></th><th id="finalTotal">$0</th></tr></tfoot>
+</table>
+<button onclick="calc()">Calculate</button>
+</div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h2>Change</h2>
+<div class="note">Change <strong>$100</strong> into the following:</div>
+<table>
+<thead>
+<tr><th>Denomination</th><th>To Bank</th><th>To Yellow Envelope</th></tr>
+</thead>
+<tbody id="changeGrid"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Yellow Envelope</h2>
+<table>
+<thead><tr><th>Denom</th><th>Count</th><th>Amount</th></tr></thead>
+<tbody id="yellow"></tbody>
+<tfoot><tr><th>Total Deposit</th><th></th><th id="depositTotal">$0</th></tr></tfoot>
+</table>
+</div>
+</div>
+
+<script>
+const denoms=[100,50,20,10,5,1];
+function money(n){ return '$'+n.toLocaleString(); }
+
+function build(){
+  denoms.slice().reverse().forEach(d=>{
+    document.getElementById('bank').insertAdjacentHTML('beforeend',
+      `<tr><td>$${d}</td><td><input type="number" id="b${d}" value="0"></td><td id="ba${d}">$0</td></tr>`);
+    document.getElementById('final').insertAdjacentHTML('beforeend',
+      `<tr><td>$${d}</td><td><input type="number" id="f${d}" value="0"></td><td id="fa${d}">$0</td></tr>`);
+  });
+}
+
+function calc(){
+  let bank={}, final={};
+  let bankTotal=0, finalTotal=0;
+
+  denoms.forEach(d=>{
+    bank[d]=+document.getElementById('b'+d).value||0;
+    final[d]=+document.getElementById('f'+d).value||0;
+    document.getElementById('ba'+d).textContent=money(bank[d]*d);
+    document.getElementById('fa'+d).textContent=money(final[d]*d);
+    bankTotal+=bank[d]*d;
+    finalTotal+=final[d]*d;
+  });
+
+  document.getElementById('bankTotal').textContent=money(bankTotal);
+  document.getElementById('finalTotal').textContent=money(finalTotal);
+
+  const deposit=Math.max(0, finalTotal-bankTotal);
+
+  // Yellow envelope
+  let alloc={};
+  denoms.forEach(d=>alloc[d]=final[d]);
+  let remaining=deposit;
+  const yellow=document.getElementById('yellow');
+  yellow.innerHTML='';
+  let depTot=0;
+
+  denoms.forEach(d=>{
+    if(remaining<=0) return;
+    const c=Math.min(alloc[d], Math.floor(remaining/d));
+    if(c>0){
+      yellow.insertAdjacentHTML('beforeend',
+        `<tr><td>$${d}</td><td>${c}</td><td>${money(c*d)}</td></tr>`);
+      alloc[d]-=c;
+      remaining-=c*d;
+      depTot+=c*d;
+    }
+  });
+  document.getElementById('depositTotal').textContent=money(depTot);
+
+  // Change grid
+  const grid=document.getElementById('changeGrid');
+  grid.innerHTML='';
+
+  let shortages={};
+  [20,10,5,1].forEach(d=>shortages[d]=Math.max(0, bank[d]-final[d]));
+
+  if(Object.values(shortages).some(v=>v>0) && final[100]>0){
+    let used=20*shortages[20]+10*shortages[10]+5*shortages[5]+shortages[1];
+    let rem=100-used;
+    let remainder={};
+    [20,10,5,1].forEach(d=>{
+      const c=Math.floor(rem/d);
+      remainder[d]=c;
+      rem-=c*d;
+    });
+
+    [20,10,5,1].forEach(d=>{
+      if(shortages[d]||remainder[d]){
+        grid.insertAdjacentHTML('beforeend',
+          `<tr><td>$${d}</td><td>${shortages[d]||''}</td><td>${remainder[d]||''}</td></tr>`);
+      }
+    });
+  }
+}
+
+build();
+</script>
+
+</body>
+</html>
