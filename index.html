@@ -44,7 +44,7 @@ input[type=number]{ width:80px; }
 <div class="grid">
 <div class="card">
 <h2>Change</h2>
-<div class="note">Change <strong>$100</strong> into the following:</div>
+<div id="changeNote" class="note"></div>
 <table>
 <thead>
 <tr><th>Denomination</th><th>To Bank</th><th>To Yellow Envelope</th></tr>
@@ -115,30 +115,42 @@ function calc(){
   });
   document.getElementById('depositTotal').textContent=money(depTot);
 
-  // Change grid
-  const grid=document.getElementById('changeGrid');
-  grid.innerHTML='';
-
+  // Change section
   let shortages={};
   [20,10,5,1].forEach(d=>shortages[d]=Math.max(0, bank[d]-final[d]));
 
-  if(Object.values(shortages).some(v=>v>0) && final[100]>0){
-    let used=20*shortages[20]+10*shortages[10]+5*shortages[5]+shortages[1];
-    let rem=100-used;
-    let remainder={};
-    [20,10,5,1].forEach(d=>{
-      const c=Math.floor(rem/d);
-      remainder[d]=c;
-      rem-=c*d;
-    });
+  const grid=document.getElementById('changeGrid');
+  grid.innerHTML='';
+  const note=document.getElementById('changeNote');
 
-    [20,10,5,1].forEach(d=>{
-      if(shortages[d]||remainder[d]){
-        grid.insertAdjacentHTML('beforeend',
-          `<tr><td>$${d}</td><td>${shortages[d]||''}</td><td>${remainder[d]||''}</td></tr>`);
-      }
-    });
+  if(!Object.values(shortages).some(v=>v>0)){
+    note.textContent='No change required.';
+    return;
   }
+
+  let changeBill = final[100]>0 ? 100 : (final[50]>0 ? 50 : null);
+  if(!changeBill){
+    note.textContent='Change required, but no $100 or $50 available.';
+    return;
+  }
+
+  note.textContent = `Change $${changeBill} into the following:`;
+
+  let used=20*shortages[20]+10*shortages[10]+5*shortages[5]+shortages[1];
+  let rem=changeBill-used;
+  let remainder={};
+  [20,10,5,1].forEach(d=>{
+    const c=Math.floor(rem/d);
+    remainder[d]=c;
+    rem-=c*d;
+  });
+
+  [20,10,5,1].forEach(d=>{
+    if(shortages[d]||remainder[d]){
+      grid.insertAdjacentHTML('beforeend',
+        `<tr><td>$${d}</td><td>${shortages[d]||''}</td><td>${remainder[d]||''}</td></tr>`);
+    }
+  });
 }
 
 build();
